@@ -1,0 +1,111 @@
+# Nigeria SARS-CoV-2 vaccination impact model
+
+An age-structured, deterministic **SEIR-V** transmission model for Nigeria,
+calibrated to observed reported COVID-19 deaths, used to estimate the health
+and economic impact of the national vaccination programme via
+observed-vs-counterfactual simulation.
+
+## What it answers
+- Infections, hospitalisations, ICU admissions and **deaths averted** by the
+  actual rollout, versus a no-vaccination counterfactual.
+- **DALYs averted** and a health-system **cost-effectiveness** analysis
+  (cost per death / hospitalisation / DALY averted; ICER vs a GDP-based threshold).
+- Alternative rollout strategies: starting 3 months earlier, reaching 70%
+  coverage, and elderly-first vs adults-first prioritisation.
+
+## Data — real and verifiable only
+The epidemic and rollout are **never** synthesised. Inputs are public, citable,
+refresh-able series for Nigeria:
+
+| Input | Source file (Our World in Data) | Underlying authority |
+|---|---|---|
+| Daily cases & deaths | `data/covid/owid_cases_deaths_all.csv` | WHO / NCDC |
+| Daily persons vaccinated | `data/covid/owid_vaccinations_all.csv` | NPHCDA / WHO |
+
+If a file is missing or has no Nigeria rows, the pipeline **stops** with a
+download command — it will not substitute a placeholder series. Observed totals
+over 2020-02-27 → 2022-12-31: **3,155 reported deaths, 266,415 cases, ~72–75M
+persons vaccinated**.
+
+Refresh the data:
+```bash
+cd data/covid
+curl -L --compressed 'https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/cases_deaths/full_data.csv' -o owid_cases_deaths_all.csv
+curl -L --compressed 'https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/vaccinations.csv' -o owid_vaccinations_all.csv
+```
+
+## Parameters vs data
+Epidemiological **parameters** (age-specific IFR/IHR, vaccine effectiveness,
+contact matrix, DALY disability weights, unit costs) are **literature values or
+clearly flagged placeholders** in [`config.R`](config.R), each with a source
+comment. These are modelling assumptions, not data — replace them with
+Nigeria-specific estimates and run a probabilistic sensitivity analysis before
+drawing policy conclusions.
+
+## Run it
+```bash
+Rscript analysis/covid_vax_impact/run.R
+```
+Requires R packages: `deSolve, ggplot2, dplyr, tidyr, readr` (all installed).
+Calibration is cached to `outputs/covid_vax_impact/calibration.rds`; delete it
+(or edit `config.R`/`model.R`/`calibrate.R`) to force a refit.
+
+## Files
+| File | Role |
+|---|---|
+| `config.R` | Parameters (cited assumptions + flagged placeholders) |
+| `data.R` | Loads real Nigeria cases/deaths/vaccination; no synthetic fallback |
+| `model.R` | Age-structured SEIR-V ODE system + runner (`deSolve`) |
+| `calibrate.R` | Fits β₀, death ascertainment, latent NPI trajectory to deaths |
+| `scenarios.R` | Observed rollout vs no-vax + alternative strategies |
+| `economics.R` | DALYs (YLL+YLD), costs, cost-effectiveness / ICER |
+| `run.R` | Orchestrator → CSV tables, plots, `RESULTS_SUMMARY.md` |
+
+## Outputs (`outputs/covid_vax_impact/`)
+- `headline_results.csv`, `scenario_comparison.csv`, `economic_evaluation.csv`
+- `nigeria_observed_daily.csv`, `data_provenance.json`
+- `fig_calibration_fit.png`, `fig_deaths_counterfactual.png`,
+  `fig_scenarios_deaths_averted.png`, `fig_fitted_npi.png`
+- `RESULTS_SUMMARY.md`
+
+## Modelling notes
+- Deterministic compartmental model: compartments are continuous, so internal
+  values are fractional by construction; all **reported** person-counts are
+  rounded to whole people. Whole-person stochastic dynamics would require a
+  stochastic/agent-based model.
+- The counterfactual reuses the *same* calibrated transmission and NPI
+  trajectory, changing only the vaccination programme, so averted estimates are
+  internally consistent.
+- Deaths are calibrated with a fitted ascertainment fraction (reported =
+  ρ × true), so results are reported on both the modelled-true and reported scales.
+
+## Methods declarations (state these in the manuscript)
+- **Calibration target is MONTHLY reported deaths**, not daily or weekly.
+  Nigeria's daily/weekly death counts are small and irregular (zero days,
+  reporting-batch spikes, weekend effects); monthly aggregation preserves the
+  epidemic wave structure while averaging administrative noise. The cumulative
+  death total is anchored separately so aggregation does not bias the level.
+- **Death under-ascertainment** is estimated as a single fraction ρ (reported =
+  ρ × true); results are reported on both the modelled-true and reported scales.
+- **Attack-rate anchor (identifiability)**: reported deaths alone cannot separate
+  transmission amplitude from death under-ascertainment (they trade off along a
+  ridge — without an anchor the true-burden and vaccine-impact estimates are not
+  identified and can swing by an order of magnitude). We anchor the cumulative
+  infection attack rate at a reference date to a **seroprevalence** estimate
+  (`config.R`; placeholder 50% by end-2021 — replace with a Nigerian serosurvey).
+  This is the single most influential assumption and must carry a sensitivity
+  analysis in the manuscript.
+- **NPI/mobility** enters as a latent transmission multiplier fitted during
+  calibration (~bimonthly knots, linearly interpolated, roughness-penalised).
+- **Seasonal forcing**: transmission is scaled by a sinusoid with fitted
+  amplitude and phase, representing Nigeria's dry-season/harmattan (Dec–Feb)
+  peaks that drove the Jan-2021 and Jan-2022 waves.
+- **Parameters vs data**: severity, VE, contacts, costs and DALY weights are
+  literature-based assumptions (see `config.R`); only the epidemic and rollout
+  series are empirical.
+
+## Limitations
+Single national patch (no state-level structure yet); waning immunity and
+reinfection not modelled explicitly; variant timing is approximate; NPI is a
+fitted latent, not measured mobility. Point estimates only — add PSA/credible
+intervals for publication. These are extension points, not blockers.
