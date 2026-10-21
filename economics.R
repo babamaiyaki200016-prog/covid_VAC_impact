@@ -70,7 +70,8 @@ economic_evaluation <- function(CFG, obs, cf, scale = 1, actual_doses = NULL) {
   # to already-immune people still incur cost.
   doses <- tot(obs, "cum_dose")
   cost_doses <- if (is.null(actual_doses)) doses else actual_doses
-  programme_cost <- cost_doses * CFG$cost_per_dose
+  # vaccine price + delivery cost per dose (each varied separately in sensitivity.R)
+  programme_cost <- cost_doses * (CFG$vaccine_price_per_dose + CFG$delivery_cost_per_dose)
   treat_saved <- treatment_cost(CFG, tot(cf,"cum_hosp")*scale, tot(cf,"cum_icu")*scale) -
                  treatment_cost(CFG, tot(obs,"cum_hosp")*scale, tot(obs,"cum_icu")*scale)
   net_cost <- programme_cost - treat_saved   # payer perspective, health-system

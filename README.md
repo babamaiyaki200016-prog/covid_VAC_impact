@@ -36,12 +36,22 @@ curl -L --compressed 'https://raw.githubusercontent.com/owid/covid-19-data/maste
 ```
 
 ## Parameters vs data
-Epidemiological **parameters** (age-specific IFR/IHR, vaccine effectiveness,
-contact matrix, DALY disability weights, unit costs) are **literature values or
-clearly flagged placeholders** in [`config.R`](config.R), each with a source
-comment. These are modelling assumptions, not data — replace them with
-Nigeria-specific estimates and run a probabilistic sensitivity analysis before
-drawing policy conclusions.
+Every parameter in [`config.R`](config.R) carries its source:
+
+| Parameter | Value | Source |
+|---|---|---|
+| Population & age structure | 206.14M; 43.5/26.7/20.1/7.0/2.7% | UN WPP 2019 (2020) |
+| Contact matrix | Prem 2021 Nigeria, collapsed to 5 bands | Prem et al. PLoS Comput Biol 2021 — `derive_contact_matrix.R` |
+| Vaccine price | US$4.06/dose (US$3 AZ-like + 10% freight, 15% wastage) | Ruiz et al. PLOS Glob Public Health 2023 |
+| Delivery cost | US$0.78/dose (Nigeria, 9 states) | Noh et al. BMC Health Serv Res 2024 |
+| Hospital / ICU cost | US$325 / US$2,889 per admission | Torres-Rueda et al. BMJ Glob Health 2021, Table SR1 (Nigeria) |
+| ICU fraction of admissions | 32% (95% CI 26–38) | Abate et al. PLoS One 2020 |
+| Life expectancy (YLL) | 63.8/50.2/34.4/19.9/9.9 y | WHO GHO 2019 life table, Nigeria |
+| GDP per capita | US$2,787.5 (2021) | World Bank WDI |
+| Price year | 2021 US$ via US CPI-U | BLS |
+
+IFR/IHR, vaccine effectiveness and disability weights remain international
+literature values (cited in `config.R`).
 
 ## Run it
 ```bash
@@ -64,6 +74,8 @@ Calibration is cached to `outputs/covid_vax_impact/calibration.rds`; delete it
 | `sensitivity.R` | Attack-rate re-calibration sweep (30–70%) + one-way tornado (~35 min) |
 | `build_supplement.R` | Regenerates the Supplementary appendix (Tables S1–S4) from outputs |
 | `verify_references.R` | Checks every manuscript reference against PubMed / Crossref |
+| `renumber_references.R` | Renumbers manuscript references by order of first citation (Vancouver) |
+| `derive_contact_matrix.R` | Downloads Prem et al. (2021) Nigeria matrix and collapses it to the 5 model bands |
 
 ## Outputs (`outputs/covid_vax_impact/`)
 - `headline_results.csv`, `scenario_comparison.csv`, `economic_evaluation.csv`
@@ -79,6 +91,12 @@ Calibration is cached to `outputs/covid_vax_impact/calibration.rds`; delete it
   (unchanged, so calibration and all health outcomes are unchanged); total doses
   drive cost. Base case: programme cost US$846M (was US$599M), US$12,373 per DALY
   averted (was US$8,686) — still not cost-effective at 0.5×GDP per capita.
+
+- **2026-10-21 — sourced inputs.** Replaced placeholder contact matrix, unit
+  costs, ICU fraction, life expectancy, age structure and GDP per capita with
+  the sourced values above; model re-calibrated. Base case: 11,974 deaths
+  averted, 154,114 DALYs, programme cost US$512M, US$2,987 per DALY averted
+  (above 0.5× GDP per capita; within the legacy 1–3× GDP range).
 
 ## Modelling notes
 - Deterministic compartmental model: compartments are continuous, so internal
