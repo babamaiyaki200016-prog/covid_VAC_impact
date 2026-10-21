@@ -72,6 +72,20 @@ load_nigeria_data <- function(CFG, country = "Nigeria") {
   # no vaccination before the programme start (guards data artefacts)
   doses_daily[grid$date < CFG$vax_start] <- 0
 
+  # total doses ADMINISTERED (all doses, incl. second/booster) -- drives
+  # programme COST only; persons_vaccinated above drives the S -> V flow.
+  if ("daily_vaccinations" %in% names(vx) && any(!is.na(vx$daily_vaccinations))) {
+    td_src <- vx[, c("date", "daily_vaccinations")]
+  } else {
+    vx <- vx[order(vx$date), ]
+    tv <- .clamp(vx$total_vaccinations)
+    td_src <- data.frame(date = vx$date, daily_vaccinations = c(tv[1], diff(tv)))
+  }
+  td <- merge(grid, td_src, by = "date", all.x = TRUE)
+  td <- td[order(td$day), ]
+  doses_total_daily <- .clamp(td$daily_vaccinations)
+  doses_total_daily[grid$date < CFG$vax_start] <- 0
+
   prov <- list(
     country = country,
     window = c(as.character(CFG$date_start), as.character(CFG$date_end)),
@@ -81,6 +95,7 @@ load_nigeria_data <- function(CFG, country = "Nigeria") {
     observed_total_reported_deaths = sum(death_daily),
     observed_total_reported_cases  = sum(case_daily),
     observed_total_persons_vaccinated = sum(doses_daily),
+    observed_total_doses_administered = sum(doses_total_daily),
     n_days = n_days
   )
 
@@ -91,13 +106,15 @@ load_nigeria_data <- function(CFG, country = "Nigeria") {
     data.frame(date = grid$date, day = grid$day,
                reported_new_cases = case_daily,
                reported_new_deaths = death_daily,
-               persons_vaccinated = doses_daily),
+               persons_vaccinated = doses_daily,
+               doses_administered = doses_total_daily),
     file.path(out_dir, "nigeria_observed_daily.csv"))
   writeLines(jsonlite_or_manual(prov),
              file.path(out_dir, "data_provenance.json"))
 
   list(grid = grid, death_daily = death_daily, case_daily = case_daily,
-       doses_daily = doses_daily, provenance = prov)
+       doses_daily = doses_daily, doses_total_daily = doses_total_daily,
+       provenance = prov)
 }
 
 # tiny JSON writer so we don't hard-depend on jsonlite

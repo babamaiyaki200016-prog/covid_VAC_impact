@@ -25,7 +25,7 @@ source(file.path(HERE, "economics.R"))
 OUT <- file.path("outputs", "covid_vax_impact")
 
 dat <- load_nigeria_data(CFG)
-actual_doses <- sum(dat$doses_daily)
+actual_doses <- sum(dat$doses_total_daily)   # all doses administered
 zero_doses   <- rep(0, length(dat$doses_daily))
 
 run_pair <- function(cfg, cal) {

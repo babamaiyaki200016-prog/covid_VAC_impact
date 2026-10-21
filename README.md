@@ -20,12 +20,13 @@ refresh-able series for Nigeria:
 | Input | Source file (Our World in Data) | Underlying authority |
 |---|---|---|
 | Daily cases & deaths | `data/covid/owid_cases_deaths_all.csv` | WHO / NCDC |
-| Daily persons vaccinated | `data/covid/owid_vaccinations_all.csv` | NPHCDA / WHO |
+| Daily persons vaccinated (first dose; drives protection) | `data/covid/owid_vaccinations_all.csv` | NPHCDA / WHO |
+| Daily doses administered (all doses; drives programme cost) | `data/covid/owid_vaccinations_all.csv` | NPHCDA / WHO |
 
 If a file is missing or has no Nigeria rows, the pipeline **stops** with a
 download command — it will not substitute a placeholder series. Observed totals
-over 2020-02-27 → 2022-12-31: **3,155 reported deaths, 266,415 cases, ~72–75M
-persons vaccinated**.
+over 2020-02-27 → 2022-12-31: **3,155 reported deaths, 266,415 cases, 74.9M
+persons vaccinated (≥1 dose) and 105.8M doses administered**.
 
 Refresh the data:
 ```bash
@@ -60,6 +61,9 @@ Calibration is cached to `outputs/covid_vax_impact/calibration.rds`; delete it
 | `scenarios.R` | Observed rollout vs no-vax + alternative strategies |
 | `economics.R` | DALYs (YLL+YLD), costs, cost-effectiveness / ICER |
 | `run.R` | Orchestrator → CSV tables, plots, `RESULTS_SUMMARY.md` |
+| `sensitivity.R` | Attack-rate re-calibration sweep (30–70%) + one-way tornado (~35 min) |
+| `build_supplement.R` | Regenerates the Supplementary appendix (Tables S1–S4) from outputs |
+| `verify_references.R` | Checks every manuscript reference against PubMed / Crossref |
 
 ## Outputs (`outputs/covid_vax_impact/`)
 - `headline_results.csv`, `scenario_comparison.csv`, `economic_evaluation.csv`
@@ -67,6 +71,14 @@ Calibration is cached to `outputs/covid_vax_impact/calibration.rds`; delete it
 - `fig_calibration_fit.png`, `fig_deaths_counterfactual.png`,
   `fig_scenarios_deaths_averted.png`, `fig_fitted_npi.png`
 - `RESULTS_SUMMARY.md`
+
+## Changelog
+- **2026-10-21 — costing correction.** Programme cost was previously charged on
+  persons vaccinated (first doses, 74.9M) instead of all doses administered
+  (105.8M). `data.R` now loads both series: first doses drive the S→V flow
+  (unchanged, so calibration and all health outcomes are unchanged); total doses
+  drive cost. Base case: programme cost US$846M (was US$599M), US$12,373 per DALY
+  averted (was US$8,686) — still not cost-effective at 0.5×GDP per capita.
 
 ## Modelling notes
 - Deterministic compartmental model: compartments are continuous, so internal

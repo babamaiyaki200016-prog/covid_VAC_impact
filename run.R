@@ -55,8 +55,9 @@ write_csv(res$table, file.path(OUT, "scenario_comparison.csv"))
 obs_run <- res$runs$observed
 cf_run  <- res$runs$no_vaccination
 # report on TRUE modelled burden and on the REPORTED scale (x rho_death)
-# programme cost is charged on ACTUAL doses delivered (real OWID/NPHCDA series)
-actual_doses <- sum(dat$doses_daily)
+# programme cost is charged on ALL doses administered (real OWID/NPHCDA series),
+# not on persons vaccinated (first doses), which drive the S -> V flow
+actual_doses <- sum(dat$doses_total_daily)   # all doses administered
 econ_true     <- economic_evaluation(CFG, obs_run, cf_run, scale = 1,
                                      actual_doses = actual_doses)
 econ_reported <- economic_evaluation(CFG, obs_run, cf_run, scale = cal$rho_death,
@@ -74,7 +75,8 @@ headline <- data.frame(
   metric = c("Infections averted", "Hospitalisations averted",
              "ICU admissions averted", "Deaths averted (modelled true)",
              "Deaths averted (reported scale)", "DALYs averted",
-             "Persons vaccinated", "Programme cost (USD)",
+             "Persons vaccinated (>=1 dose)", "Doses administered",
+             "Programme cost (USD)",
              "Net cost (USD)", "Cost per death averted (USD)",
              "Cost per DALY averted (USD)",
              "Cost-effective at 0.5x GDPpc?"),
@@ -85,6 +87,7 @@ headline <- data.frame(
     round(econ_true$deaths_averted),
     round(econ_reported$deaths_averted),
     round(econ_true$dalys_averted),
+    round(sum(dat$doses_daily)),
     round(econ_true$doses_delivered),
     round(econ_true$programme_cost_usd),
     round(econ_true$net_cost_usd),
@@ -219,7 +222,7 @@ report <- c(
           fmtn(e$dalys_averted), fmtn(e$yll_averted), fmtn(e$yld_averted)),
   "",
   "## Economic evaluation (health-system perspective, 2021 USD)",
-  sprintf("- Persons vaccinated: %s; programme cost: $%s", fmtn(e$doses_delivered), fmtn(e$programme_cost_usd)),
+  sprintf("- Persons vaccinated (>=1 dose): %s; doses administered: %s; programme cost: $%s", fmtn(sum(dat$doses_daily)), fmtn(e$doses_delivered), fmtn(e$programme_cost_usd)),
   sprintf("- Treatment cost averted: $%s; net cost: $%s", fmtn(e$treatment_cost_saved), fmtn(e$net_cost_usd)),
   sprintf("- Cost per death averted: $%s", fmtn(e$cost_per_death_averted)),
   sprintf("- Cost per DALY averted: $%s (threshold 0.5x GDPpc = $%s)",
